@@ -10,15 +10,20 @@ The background treatments preserve the native adaptive macOS material while chan
 - **Balanced** combines native blur with moderate dimming.
 - **Deep Focus** adds stronger separation for distracting backgrounds.
 
-## Requirements
+## Install
+
+Download the latest notarized DMG from [GitHub Releases](https://github.com/alialfredji/focus-veil/releases), open it, and drag **Focus Veil** into **Applications**. Launch the app and grant Accessibility access when macOS asks.
+
+## System requirements
 
 - macOS 14 or later
-- Apple Silicon (`arm64`)
-- Xcode command-line tools with Swift 6.2 or later
+- Apple Silicon (`arm64`) or Intel (`x86_64`)
 
 No Screen Recording permission is required. Focus tracking and the pointer-shake gesture use Accessibility access; the app does not use screen capture.
 
 ## Build
+
+Building from source requires Xcode command-line tools with Swift 6.2 or later.
 
 From this directory:
 
@@ -26,9 +31,19 @@ From this directory:
 ./scripts/build-app.sh
 ```
 
-The build script runs tests, creates a release arm64 executable, assembles `dist/Focus Veil.app`, signs it with the first installed Apple Development identity, verifies the signature, and creates `dist/Focus-Veil-0.1.0.zip`.
+The build script runs tests, creates a universal `arm64 + x86_64` executable, assembles `dist/Focus Veil.app`, signs it with the first installed Apple Development identity, verifies the signature, and creates both `dist/Focus-Veil-0.1.0.zip` and `dist/Focus-Veil-0.1.0.dmg`.
 
 If no Apple Development identity is available, the script warns before using ad-hoc signing. In that case, macOS may request Accessibility approval again after rebuilding.
+
+## Publish a release
+
+Public releases must use a Developer ID Application certificate and an Apple notary-service keychain profile. With those installed, set the profile name and run:
+
+```sh
+FOCUS_VEIL_NOTARY_PROFILE="focus-veil-notary" ./scripts/release-app.sh --publish
+```
+
+The release script builds the universal app with Hardened Runtime and a secure timestamp, creates and signs the DMG, submits it with `notarytool`, staples the accepted ticket, validates it with Gatekeeper, writes a SHA-256 checksum, tags the commit, and publishes the artifacts to GitHub Releases. Credentials remain in the macOS keychain and are never written to this repository.
 
 ## Install locally
 
@@ -49,7 +64,7 @@ Focus Veil asks only for Accessibility access. It never requests Screen Recordin
 ## Current limitations
 
 - No launch-at-login support, updater, analytics, or network access is included.
-- This build is for local use on this Mac. It is not notarized or intended for distribution to other Macs.
+- Development builds are not notarized. Only DMGs published through `scripts/release-app.sh` are intended for distribution to other Macs.
 
 ## Uninstall
 
