@@ -3,13 +3,15 @@ import AppKit
 @MainActor
 final class StatusMenuController: NSObject, NSMenuDelegate {
     var onEnabledChange: ((Bool) -> Void)?
-    var onPresetChange: ((AppearancePreset) -> Void)?
+    var onIntensityChange: ((Double) -> Void)?
     var onPermissionRefresh: ((Bool) -> Void)?
 
     private let statusItem: NSStatusItem
     private let menu = NSMenu()
     private var toggleItem: NSMenuItem!
-    private var strengthItems: [AppearancePreset: NSMenuItem] = [:]
+    private var intensityItem: NSMenuItem!
+    private var intensityLabel: NSTextField!
+    private var intensitySlider: NSSlider!
     private var permissionStatusItem: NSMenuItem!
     private var requestPermissionItem: NSMenuItem!
     private var permissionGranted = false
@@ -30,7 +32,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     func update(
         isEnabled: Bool,
-        preset: AppearancePreset,
+        intensity: Double,
         permissionGranted: Bool
     ) {
         isEffectEnabled = isEnabled
@@ -39,10 +41,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         toggleItem.state = isEnabled ? .on : .off
         toggleItem.isEnabled = permissionGranted
 
-        for (itemPreset, item) in strengthItems {
-            item.state = itemPreset == preset ? .on : .off
-            item.isEnabled = permissionGranted
-        }
+        intensitySlider.doubleValue = intensity
+        intensitySlider.isEnabled = permissionGranted
+        intensityItem.isEnabled = permissionGranted
+        updateIntensityDisplay(intensity)
 
         permissionStatusItem.isHidden = permissionGranted
         requestPermissionItem.isHidden = permissionGranted
@@ -72,22 +74,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         toggleItem.target = self
         menu.addItem(toggleItem)
 
-        let strengthMenu = NSMenu()
-        for (index, preset) in AppearancePreset.allCases.enumerated() {
-            let item = NSMenuItem(
-                title: preset.title,
-                action: #selector(selectPreset(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.tag = index
-            strengthItems[preset] = item
-            strengthMenu.addItem(item)
-        }
-
-        let strengthItem = NSMenuItem(title: "Strength", action: nil, keyEquivalent: "")
-        strengthItem.submenu = strengthMenu
-        menu.addItem(strengthItem)
+        intensityItem = NSMenuItem(title: "Intensity", action: nil, keyEquivalent: "")
+        intensityItem.view = makeIntensityView()
+        menu.addItem(intensityItem)
         menu.addItem(.separator())
 
         permissionStatusItem = NSMenuItem(
@@ -136,9 +125,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         onEnabledChange?(sender.state != .on)
     }
 
-    @objc private func selectPreset(_ sender: NSMenuItem) {
-        guard AppearancePreset.allCases.indices.contains(sender.tag) else { return }
-        onPresetChange?(AppearancePreset.allCases[sender.tag])
+    @objc private func intensityChanged(_ sender: NSSlider) {
+        updateIntensityDisplay(sender.doubleValue)
+        onIntensityChange?(sender.doubleValue)
     }
 
     @objc private func requestPermission() {
@@ -160,5 +149,36 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         }
 
         statusItem.button?.setAccessibilityLabel("Focus Veil, \(state)")
+    }
+
+    private func makeIntensityView() -> NSView {
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 220, height: 46))
+
+        intensityLabel = NSTextField(labelWithString: "Intensity")
+        intensityLabel.font = NSFont.menuFont(ofSize: 0)
+        intensityLabel.frame = NSRect(x: 14, y: 26, width: 192, height: 16)
+        container.addSubview(intensityLabel)
+
+        intensitySlider = NSSlider(
+            value: Preferences.defaultIntensity,
+            minValue: Preferences.minimumIntensity,
+            maxValue: Preferences.maximumIntensity,
+            target: self,
+            action: #selector(intensityChanged(_:))
+        )
+        intensitySlider.isContinuous = true
+        intensitySlider.controlSize = .small
+        intensitySlider.frame = NSRect(x: 12, y: 3, width: 196, height: 22)
+        intensitySlider.setAccessibilityLabel("Veil intensity")
+        container.addSubview(intensitySlider)
+
+        updateIntensityDisplay(Preferences.defaultIntensity)
+        return container
+    }
+
+    private func updateIntensityDisplay(_ intensity: Double) {
+        let percentage = Int((intensity * 100).rounded())
+        intensityLabel?.stringValue = "Intensity  \(percentage)%"
+        intensitySlider?.setAccessibilityValueDescription("\(percentage) percent")
     }
 }

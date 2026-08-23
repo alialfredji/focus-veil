@@ -1,8 +1,8 @@
 # Focus Veil
 
-Focus Veil is a local macOS menu-bar utility that will keep the focused window clear while softly blurring and dimming ordinary windows behind it. It is a personal, native AppKit app with no network access.
+Focus Veil is a local macOS menu-bar utility that keeps the focused window clear while softly blurring and dimming ordinary windows behind it. It is a personal, native AppKit app with no network access.
 
-Phase 1 provides the signed app bundle, menu-bar skeleton, and local install flow. The focus effect and Accessibility permission flow are added in later phases.
+The menu-bar control provides a continuous intensity slider and an on/off toggle. A deliberate left-right pointer shake also toggles the effect. The veil fades and moves smoothly, respects Reduce Motion, stays click-through, and hides automatically in Mission Control.
 
 ## Requirements
 
@@ -10,7 +10,7 @@ Phase 1 provides the signed app bundle, menu-bar skeleton, and local install flo
 - Apple Silicon (`arm64`)
 - Xcode command-line tools with Swift 6.2 or later
 
-No Screen Recording permission is required. Later focus tracking requires Accessibility permission; it does not use screen capture.
+No Screen Recording permission is required. Focus tracking and the pointer-shake gesture use Accessibility access; the app does not use screen capture.
 
 ## Build
 
@@ -38,12 +38,11 @@ This builds first, refuses to replace a running Focus Veil process, installs the
 
 ## Permissions
 
-Focus Veil is intended to ask only for Accessibility access once focused-window tracking is implemented. It must never request Screen Recording permission. If Accessibility access is unavailable or revoked, the eventual effect will fail open by showing no overlay.
+Focus Veil asks only for Accessibility access. It never requests Screen Recording permission. If Accessibility access is unavailable or revoked, the effect fails open by showing no overlay.
 
 ## Current limitations
 
-- Phase 1 has an empty menu-bar skeleton; it does not yet blur or dim windows.
-- No preferences, global shortcut, launch-at-login support, updater, analytics, or network access are included.
+- No launch-at-login support, updater, analytics, or network access is included.
 - This build is for local use on this Mac. It is not notarized or intended for distribution to other Macs.
 
 ## Uninstall

@@ -3,8 +3,9 @@ import QuartzCore
 
 @MainActor
 final class BlurOverlayView: NSView {
-    private static let cutoutExpansion: CGFloat = 2
-    private static let cutoutCornerRadius: CGFloat = 12
+    private static let cutoutInset: CGFloat = 1
+    private static let cutoutCornerRadius: CGFloat = 14
+    private static let transitionDuration: TimeInterval = 0.16
 
     private let effectView: NSVisualEffectView
     private let tintView: NSView
@@ -20,19 +21,24 @@ final class BlurOverlayView: NSView {
 
         effectView.autoresizingMask = [.width, .height]
         effectView.blendingMode = .behindWindow
+        effectView.material = .underWindowBackground
         effectView.state = .active
         addSubview(effectView)
 
         tintView.wantsLayer = true
         tintView.autoresizingMask = [.width, .height]
-        tintView.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.22).cgColor
+        tintView.layer?.backgroundColor = NSColor.black.cgColor
         addSubview(tintView)
 
         maskLayer.fillColor = NSColor.black.cgColor
         maskLayer.fillRule = .evenOdd
         layer?.mask = maskLayer
 
-        update(preset: .medium, cutoutRect: nil)
+        update(
+            intensity: Preferences.defaultIntensity,
+            cutoutRect: nil,
+            animated: false
+        )
     }
 
     @available(*, unavailable)
@@ -48,57 +54,90 @@ final class BlurOverlayView: NSView {
         effectView.frame = bounds
         tintView.frame = bounds
         maskLayer.frame = bounds
-        updateMaskPath()
+        updateMaskPath(previousCutout: nil, animated: false)
         CATransaction.commit()
     }
 
-    func update(preset: AppearancePreset, cutoutRect: CGRect?) {
+    func update(intensity: Double, cutoutRect: CGRect?, animated: Bool) {
+        let previousCutout = self.cutoutRect
         self.cutoutRect = cutoutRect
 
-        let appearance = Self.appearance(for: preset)
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        effectView.material = appearance.material
-        tintView.layer?.backgroundColor = NSColor.black
-            .withAlphaComponent(appearance.tintAlpha)
-            .cgColor
-        updateMaskPath()
-        CATransaction.commit()
+        let clampedIntensity = min(max(intensity, 0), 1)
+        let effectAlpha = 0.15 + (clampedIntensity * 0.85)
+        let tintAlpha = 0.02 + (clampedIntensity * 0.32)
+
+        if animated {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = Self.transitionDuration
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                effectView.animator().alphaValue = effectAlpha
+                tintView.animator().alphaValue = tintAlpha
+            }
+        } else {
+            effectView.alphaValue = effectAlpha
+            tintView.alphaValue = tintAlpha
+        }
+
+        updateMaskPath(previousCutout: previousCutout, animated: animated)
     }
 
-    private func updateMaskPath() {
+    private func updateMaskPath(previousCutout: CGRect?, animated: Bool) {
+        let newPath = makeMaskPath()
+        let currentPath = maskLayer.presentation()?.path ?? maskLayer.path
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        maskLayer.path = newPath
+        CATransaction.commit()
+
+        guard animated,
+              previousCutout != nil,
+              cutoutRect != nil,
+              previousCutout != cutoutRect,
+              let currentPath
+        else {
+            maskLayer.removeAnimation(forKey: "cutoutPath")
+            return
+        }
+
+        let animation = CABasicAnimation(keyPath: "path")
+        animation.fromValue = currentPath
+        animation.toValue = newPath
+        animation.duration = Self.transitionDuration
+        animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        maskLayer.add(animation, forKey: "cutoutPath")
+    }
+
+    private func makeMaskPath() -> CGPath {
         let path = CGMutablePath()
         path.addRect(bounds)
 
         if let cutoutRect {
-            let expandedCutout = cutoutRect
-                .insetBy(dx: -Self.cutoutExpansion, dy: -Self.cutoutExpansion)
+            let fillsOverlay = cutoutRect.contains(
+                bounds.insetBy(dx: Self.cutoutInset, dy: Self.cutoutInset)
+            )
+            let adjustedCutout = fillsOverlay
+                ? cutoutRect.insetBy(
+                    dx: -Self.cutoutCornerRadius,
+                    dy: -Self.cutoutCornerRadius
+                )
+                : cutoutRect.insetBy(
+                    dx: Self.cutoutInset,
+                    dy: Self.cutoutInset
+                )
 
-            if !expandedCutout.isNull,
-               !expandedCutout.isInfinite,
-               !expandedCutout.isEmpty
+            if !adjustedCutout.isNull,
+               !adjustedCutout.isInfinite,
+               !adjustedCutout.isEmpty
             {
                 path.addRoundedRect(
-                    in: expandedCutout,
+                    in: adjustedCutout,
                     cornerWidth: Self.cutoutCornerRadius,
                     cornerHeight: Self.cutoutCornerRadius
                 )
             }
         }
 
-        maskLayer.path = path
-    }
-
-    private static func appearance(
-        for preset: AppearancePreset
-    ) -> (material: NSVisualEffectView.Material, tintAlpha: CGFloat) {
-        switch preset {
-        case .soft:
-            (.underWindowBackground, 0.12)
-        case .medium:
-            (.underWindowBackground, 0.22)
-        case .strong:
-            (.underWindowBackground, 0.34)
-        }
+        return path
     }
 }

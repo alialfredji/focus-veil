@@ -6,7 +6,7 @@ final class OverlayCoordinator: NSObject {
     private var windows: [CGDirectDisplayID: ScreenOverlayWindow] = [:]
     private var isVisible = false
     private var snapshot: FocusedWindowSnapshot?
-    private var preset: AppearancePreset = .medium
+    private var intensity = Preferences.defaultIntensity
 
     override init() {
         super.init()
@@ -22,17 +22,17 @@ final class OverlayCoordinator: NSObject {
     func update(
         isVisible: Bool,
         snapshot: FocusedWindowSnapshot?,
-        preset: AppearancePreset
+        intensity: Double
     ) {
         self.isVisible = isVisible
         self.snapshot = snapshot
-        self.preset = preset
+        self.intensity = intensity
         render()
     }
 
     func stop() {
         NotificationCenter.default.removeObserver(self)
-        hideAll()
+        hideAll(animated: false)
         windows.removeAll()
     }
 
@@ -41,11 +41,13 @@ final class OverlayCoordinator: NSObject {
     }
 
     private func render() {
+        let animated = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+
         guard isVisible,
               let snapshot,
               let primaryScreen = NSScreen.screens.first
         else {
-            hideAll()
+            hideAll(animated: animated)
             return
         }
 
@@ -68,8 +70,12 @@ final class OverlayCoordinator: NSObject {
                 for: focusedFrame,
                 in: screen.visibleFrame
             )
-            window.update(preset: preset, localCutout: localCutout)
-            window.showWithoutActivating()
+            window.update(
+                intensity: intensity,
+                localCutout: localCutout,
+                animated: animated
+            )
+            window.showWithoutActivating(animated: animated)
         }
     }
 
@@ -87,14 +93,14 @@ final class OverlayCoordinator: NSObject {
 
         let removedDisplayIDs = windows.keys.filter { !activeDisplayIDs.contains($0) }
         for displayID in removedDisplayIDs {
-            windows[displayID]?.hideOverlay()
+            windows[displayID]?.hideOverlay(animated: false)
             windows.removeValue(forKey: displayID)
         }
     }
 
-    private func hideAll() {
+    private func hideAll(animated: Bool) {
         for window in windows.values {
-            window.hideOverlay()
+            window.hideOverlay(animated: animated)
         }
     }
 

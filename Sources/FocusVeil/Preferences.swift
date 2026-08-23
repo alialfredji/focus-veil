@@ -1,25 +1,12 @@
 import Foundation
 
-enum AppearancePreset: String, CaseIterable, Sendable {
-    case soft
-    case medium
-    case strong
-
-    var title: String {
-        switch self {
-        case .soft:
-            "Soft"
-        case .medium:
-            "Medium"
-        case .strong:
-            "Strong"
-        }
-    }
-}
-
 final class Preferences {
+    static let minimumIntensity = 0.2
+    static let maximumIntensity = 1.0
+    static let defaultIntensity = 0.55
+
     static let isEnabledKey = "focusVeil.isEnabled"
-    static let presetKey = "focusVeil.preset"
+    static let intensityKey = "focusVeil.intensity"
 
     private let userDefaults: UserDefaults
 
@@ -36,18 +23,20 @@ final class Preferences {
         }
     }
 
-    var preset: AppearancePreset {
+    var intensity: Double {
         get {
-            guard let rawValue = userDefaults.string(forKey: Self.presetKey),
-                  let preset = AppearancePreset(rawValue: rawValue)
-            else {
-                return .medium
+            guard let value = userDefaults.object(forKey: Self.intensityKey) as? NSNumber else {
+                return Self.defaultIntensity
             }
 
-            return preset
+            return Self.clampedIntensity(value.doubleValue)
         }
         set {
-            userDefaults.set(newValue.rawValue, forKey: Self.presetKey)
+            userDefaults.set(Self.clampedIntensity(newValue), forKey: Self.intensityKey)
         }
+    }
+
+    private static func clampedIntensity(_ value: Double) -> Double {
+        min(max(value, minimumIntensity), maximumIntensity)
     }
 }

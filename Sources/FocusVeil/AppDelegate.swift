@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var accessibilityPermissionController: AccessibilityPermissionController?
     private var focusedWindowTracker: FocusedWindowTracker?
     private var overlayCoordinator: OverlayCoordinator?
+    private var pointerShakeDetector: PointerShakeDetector?
     private var statusMenuController: StatusMenuController?
     private var focusedWindowSnapshot: FocusedWindowSnapshot?
 
@@ -14,11 +15,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let permissionController = AccessibilityPermissionController(promptOnLaunch: true)
         let windowTracker = FocusedWindowTracker()
         let overlayCoordinator = OverlayCoordinator()
+        let pointerShakeDetector = PointerShakeDetector()
         let menuController = StatusMenuController()
 
         accessibilityPermissionController = permissionController
         focusedWindowTracker = windowTracker
         self.overlayCoordinator = overlayCoordinator
+        self.pointerShakeDetector = pointerShakeDetector
         statusMenuController = menuController
 
         permissionController.onChange = { [weak self] _ in
@@ -33,15 +36,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             preferences.isEnabled = isEnabled
             reconcileState()
         }
-        menuController.onPresetChange = { [weak self] preset in
+        menuController.onIntensityChange = { [weak self] intensity in
             guard let self else { return }
-            preferences.preset = preset
+            preferences.intensity = intensity
             reconcileState()
         }
         menuController.onPermissionRefresh = { [weak permissionController] shouldPrompt in
             permissionController?.refresh(prompt: shouldPrompt)
         }
+        pointerShakeDetector.onShake = { [weak self] in
+            guard let self else { return }
+            preferences.isEnabled.toggle()
+            reconcileState()
+        }
 
+        pointerShakeDetector.start()
         permissionController.startMonitoring()
         reconcileState()
     }
@@ -57,6 +66,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         overlayCoordinator?.stop()
         overlayCoordinator = nil
+
+        pointerShakeDetector?.stop()
+        pointerShakeDetector = nil
 
         accessibilityPermissionController?.stop()
         accessibilityPermissionController = nil
@@ -85,7 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menuController.update(
             isEnabled: preferences.isEnabled,
-            preset: preferences.preset,
+            intensity: preferences.intensity,
             permissionGranted: permissionController.isTrusted
         )
     }
@@ -103,7 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlayCoordinator.update(
             isVisible: shouldShow,
             snapshot: focusedWindowSnapshot,
-            preset: preferences.preset
+            intensity: preferences.intensity
         )
     }
 }

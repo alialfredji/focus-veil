@@ -22,33 +22,40 @@ final class PreferencesTests: XCTestCase {
         super.tearDown()
     }
 
-    func testDefaultsToEnabledAndMediumPreset() {
+    func testDefaultsToEnabledAndBalancedIntensity() {
         let preferences = Preferences(userDefaults: userDefaults)
 
         XCTAssertTrue(preferences.isEnabled)
-        XCTAssertEqual(preferences.preset, .medium)
+        XCTAssertEqual(preferences.intensity, 0.55)
     }
 
-    func testPresetTitlesAreLiteral() {
-        XCTAssertEqual(AppearancePreset.soft.title, "Soft")
-        XCTAssertEqual(AppearancePreset.medium.title, "Medium")
-        XCTAssertEqual(AppearancePreset.strong.title, "Strong")
-    }
-
-    func testPersistsEnabledStateAndPreset() {
+    func testPersistsEnabledStateAndIntensity() {
         let preferences = Preferences(userDefaults: userDefaults)
         preferences.isEnabled = false
-        preferences.preset = .strong
+        preferences.intensity = 0.78
 
         let reloadedPreferences = Preferences(userDefaults: userDefaults)
 
         XCTAssertFalse(reloadedPreferences.isEnabled)
-        XCTAssertEqual(reloadedPreferences.preset, .strong)
+        XCTAssertEqual(reloadedPreferences.intensity, 0.78)
     }
 
-    func testInvalidStoredPresetFallsBackToMedium() {
-        userDefaults.set("unexpected", forKey: Preferences.presetKey)
+    func testIntensityIsClampedToSupportedRange() {
+        let preferences = Preferences(userDefaults: userDefaults)
 
-        XCTAssertEqual(Preferences(userDefaults: userDefaults).preset, .medium)
+        preferences.intensity = -1
+        XCTAssertEqual(preferences.intensity, Preferences.minimumIntensity)
+
+        preferences.intensity = 2
+        XCTAssertEqual(preferences.intensity, Preferences.maximumIntensity)
+    }
+
+    func testInvalidStoredIntensityFallsBackToDefault() {
+        userDefaults.set("unexpected", forKey: Preferences.intensityKey)
+
+        XCTAssertEqual(
+            Preferences(userDefaults: userDefaults).intensity,
+            Preferences.defaultIntensity
+        )
     }
 }

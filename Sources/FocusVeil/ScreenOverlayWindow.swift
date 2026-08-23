@@ -1,11 +1,15 @@
 import AppKit
 import CoreGraphics
+import QuartzCore
 
 @MainActor
 final class ScreenOverlayWindow: NSWindow {
+    private static let fadeDuration: TimeInterval = 0.18
+
     let displayID: CGDirectDisplayID
 
     private let overlayView: BlurOverlayView
+    private var transitionGeneration = 0
 
     init?(screen: NSScreen) {
         guard let displayID = Self.displayID(for: screen) else { return nil }
@@ -32,7 +36,7 @@ final class ScreenOverlayWindow: NSWindow {
 
         var behavior: NSWindow.CollectionBehavior = [
             .canJoinAllSpaces,
-            .stationary,
+            .transient,
             .ignoresCycle,
         ]
         if #available(macOS 26.0, *) {
@@ -55,16 +59,62 @@ final class ScreenOverlayWindow: NSWindow {
         setFrame(screen.visibleFrame, display: false, animate: false)
     }
 
-    func update(preset: AppearancePreset, localCutout: CGRect?) {
-        overlayView.update(preset: preset, cutoutRect: localCutout)
+    func update(intensity: Double, localCutout: CGRect?, animated: Bool) {
+        overlayView.update(
+            intensity: intensity,
+            cutoutRect: localCutout,
+            animated: animated
+        )
     }
 
-    func showWithoutActivating() {
-        orderFrontRegardless()
+    func showWithoutActivating(animated: Bool) {
+        transitionGeneration += 1
+
+        if !isVisible {
+            alphaValue = animated ? 0 : 1
+            orderFrontRegardless()
+        }
+
+        guard animated else {
+            alphaValue = 1
+            return
+        }
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = Self.fadeDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            animator().alphaValue = 1
+        }
     }
 
-    func hideOverlay() {
-        orderOut(nil)
+    func hideOverlay(animated: Bool = true) {
+        guard isVisible else { return }
+
+        transitionGeneration += 1
+        let generation = transitionGeneration
+
+        guard animated else {
+            orderOut(nil)
+            alphaValue = 1
+            return
+        }
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = Self.fadeDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            animator().alphaValue = 0
+        } completionHandler: { [weak self] in
+            Task { @MainActor in
+                guard let self,
+                      self.transitionGeneration == generation
+                else {
+                    return
+                }
+
+                self.orderOut(nil)
+                self.alphaValue = 1
+            }
+        }
     }
 
     private static func displayID(for screen: NSScreen) -> CGDirectDisplayID? {
