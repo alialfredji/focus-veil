@@ -59,9 +59,15 @@ final class ScreenOverlayWindow: NSWindow {
         setFrame(screen.visibleFrame, display: false, animate: false)
     }
 
-    func update(intensity: Double, localCutout: CGRect?, animated: Bool) {
+    func update(
+        intensity: Double,
+        backgroundTreatment: BackgroundTreatment,
+        localCutout: CGRect?,
+        animated: Bool
+    ) {
         overlayView.update(
             intensity: intensity,
+            backgroundTreatment: backgroundTreatment,
             cutoutRect: localCutout,
             animated: animated
         )

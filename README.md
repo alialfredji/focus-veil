@@ -2,7 +2,13 @@
 
 Focus Veil is a local macOS menu-bar utility that keeps the focused window clear while softly blurring and dimming ordinary windows behind it. It is a personal, native AppKit app with no network access.
 
-The menu-bar control provides a continuous intensity slider and an on/off toggle. A deliberate left-right pointer shake also toggles the effect. The veil fades and moves smoothly, respects Reduce Motion, stays click-through, and hides automatically in Mission Control.
+The menu-bar control provides a continuous intensity slider, three background treatments, and an on/off toggle. The focused window gets a subtle animated edge and shadow so it reads as an elevated surface above the veil. A deliberate left-right pointer shake also toggles the effect. The veil fades and moves smoothly, respects Reduce Motion, stays click-through, and hides automatically in Mission Control.
+
+The background treatments preserve the native adaptive macOS material while changing its character:
+
+- **Soft Frost** keeps more desktop color and detail.
+- **Balanced** combines native blur with moderate dimming.
+- **Deep Focus** adds stronger separation for distracting backgrounds.
 
 ## Requirements
 

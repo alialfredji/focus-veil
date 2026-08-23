@@ -4,6 +4,7 @@ import AppKit
 final class StatusMenuController: NSObject, NSMenuDelegate {
     var onEnabledChange: ((Bool) -> Void)?
     var onIntensityChange: ((Double) -> Void)?
+    var onBackgroundTreatmentChange: ((BackgroundTreatment) -> Void)?
     var onPermissionRefresh: ((Bool) -> Void)?
 
     private let statusItem: NSStatusItem
@@ -12,6 +13,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private var intensityItem: NSMenuItem!
     private var intensityLabel: NSTextField!
     private var intensitySlider: NSSlider!
+    private var backgroundItem: NSMenuItem!
+    private var backgroundTreatmentItems: [BackgroundTreatment: NSMenuItem] = [:]
     private var permissionStatusItem: NSMenuItem!
     private var requestPermissionItem: NSMenuItem!
     private var permissionGranted = false
@@ -33,6 +36,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     func update(
         isEnabled: Bool,
         intensity: Double,
+        backgroundTreatment: BackgroundTreatment,
         permissionGranted: Bool
     ) {
         isEffectEnabled = isEnabled
@@ -45,6 +49,11 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         intensitySlider.isEnabled = permissionGranted
         intensityItem.isEnabled = permissionGranted
         updateIntensityDisplay(intensity)
+
+        backgroundItem.isEnabled = permissionGranted
+        for (treatment, item) in backgroundTreatmentItems {
+            item.state = treatment == backgroundTreatment ? .on : .off
+        }
 
         permissionStatusItem.isHidden = permissionGranted
         requestPermissionItem.isHidden = permissionGranted
@@ -77,6 +86,26 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         intensityItem = NSMenuItem(title: "Intensity", action: nil, keyEquivalent: "")
         intensityItem.view = makeIntensityView()
         menu.addItem(intensityItem)
+
+        backgroundItem = NSMenuItem(title: "Background", action: nil, keyEquivalent: "")
+        let backgroundMenu = NSMenu(title: "Background")
+        for (index, treatment) in BackgroundTreatment.allCases.enumerated() {
+            let item = NSMenuItem(
+                title: treatment.displayName,
+                action: #selector(backgroundTreatmentSelected(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.tag = index
+            item.image = NSImage(
+                systemSymbolName: treatment.symbolName,
+                accessibilityDescription: treatment.displayName
+            )
+            backgroundMenu.addItem(item)
+            backgroundTreatmentItems[treatment] = item
+        }
+        backgroundItem.submenu = backgroundMenu
+        menu.addItem(backgroundItem)
         menu.addItem(.separator())
 
         permissionStatusItem = NSMenuItem(
@@ -128,6 +157,13 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     @objc private func intensityChanged(_ sender: NSSlider) {
         updateIntensityDisplay(sender.doubleValue)
         onIntensityChange?(sender.doubleValue)
+    }
+
+    @objc private func backgroundTreatmentSelected(_ sender: NSMenuItem) {
+        let treatments = BackgroundTreatment.allCases
+        guard treatments.indices.contains(sender.tag) else { return }
+
+        onBackgroundTreatmentChange?(treatments[sender.tag])
     }
 
     @objc private func requestPermission() {

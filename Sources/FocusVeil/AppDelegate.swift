@@ -41,6 +41,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             preferences.intensity = intensity
             reconcileState()
         }
+        menuController.onBackgroundTreatmentChange = { [weak self] treatment in
+            guard let self else { return }
+            preferences.backgroundTreatment = treatment
+            reconcileState()
+        }
         menuController.onPermissionRefresh = { [weak permissionController] shouldPrompt in
             permissionController?.refresh(prompt: shouldPrompt)
         }
@@ -98,6 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuController.update(
             isEnabled: preferences.isEnabled,
             intensity: preferences.intensity,
+            backgroundTreatment: preferences.backgroundTreatment,
             permissionGranted: permissionController.isTrusted
         )
     }
@@ -115,7 +121,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlayCoordinator.update(
             isVisible: shouldShow,
             snapshot: focusedWindowSnapshot,
-            intensity: preferences.intensity
+            intensity: preferences.intensity,
+            backgroundTreatment: preferences.backgroundTreatment
         )
     }
 }

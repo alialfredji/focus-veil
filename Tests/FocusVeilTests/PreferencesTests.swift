@@ -27,17 +27,20 @@ final class PreferencesTests: XCTestCase {
 
         XCTAssertTrue(preferences.isEnabled)
         XCTAssertEqual(preferences.intensity, 0.55)
+        XCTAssertEqual(preferences.backgroundTreatment, .balanced)
     }
 
     func testPersistsEnabledStateAndIntensity() {
         let preferences = Preferences(userDefaults: userDefaults)
         preferences.isEnabled = false
         preferences.intensity = 0.78
+        preferences.backgroundTreatment = .deepFocus
 
         let reloadedPreferences = Preferences(userDefaults: userDefaults)
 
         XCTAssertFalse(reloadedPreferences.isEnabled)
         XCTAssertEqual(reloadedPreferences.intensity, 0.78)
+        XCTAssertEqual(reloadedPreferences.backgroundTreatment, .deepFocus)
     }
 
     func testIntensityIsClampedToSupportedRange() {
@@ -56,6 +59,15 @@ final class PreferencesTests: XCTestCase {
         XCTAssertEqual(
             Preferences(userDefaults: userDefaults).intensity,
             Preferences.defaultIntensity
+        )
+    }
+
+    func testInvalidStoredBackgroundTreatmentFallsBackToDefault() {
+        userDefaults.set("unexpected", forKey: Preferences.backgroundTreatmentKey)
+
+        XCTAssertEqual(
+            Preferences(userDefaults: userDefaults).backgroundTreatment,
+            .balanced
         )
     }
 }

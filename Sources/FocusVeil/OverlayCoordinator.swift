@@ -7,6 +7,7 @@ final class OverlayCoordinator: NSObject {
     private var isVisible = false
     private var snapshot: FocusedWindowSnapshot?
     private var intensity = Preferences.defaultIntensity
+    private var backgroundTreatment = BackgroundTreatment.defaultValue
 
     override init() {
         super.init()
@@ -22,11 +23,13 @@ final class OverlayCoordinator: NSObject {
     func update(
         isVisible: Bool,
         snapshot: FocusedWindowSnapshot?,
-        intensity: Double
+        intensity: Double,
+        backgroundTreatment: BackgroundTreatment
     ) {
         self.isVisible = isVisible
         self.snapshot = snapshot
         self.intensity = intensity
+        self.backgroundTreatment = backgroundTreatment
         render()
     }
 
@@ -72,6 +75,7 @@ final class OverlayCoordinator: NSObject {
             )
             window.update(
                 intensity: intensity,
+                backgroundTreatment: backgroundTreatment,
                 localCutout: localCutout,
                 animated: animated
             )
